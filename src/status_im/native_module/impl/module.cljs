@@ -8,7 +8,8 @@
             [status-im.utils.platform :as p]
             [status-im.utils.async :as async-util]
             [status-im.react-native.js-dependencies :as rn-dependencies]
-            [clojure.string :as string]))
+            [clojure.string :as string]
+            [status-im.utils.platform :as platform]))
 
 ;; if StatusModule is not initialized better to store
 ;; calls and make them only when StatusModule is ready
@@ -167,3 +168,8 @@
 (defn update-mailservers [enodes on-result]
   (when status
     (call-module #(.updateMailservers status enodes on-result))))
+
+(defn rooted-device? [callback]
+  (if (and platform/ios? status)
+    (call-module #(.isDeviceRooted callback))
+    (callback false)))
