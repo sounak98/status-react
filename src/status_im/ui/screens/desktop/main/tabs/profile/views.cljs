@@ -15,9 +15,7 @@
             [status-im.ui.screens.pairing.views :as pairing.views]
             [status-im.ui.components.qr-code-viewer.views :as qr-code-viewer]
             [status-im.ui.screens.desktop.main.tabs.profile.styles :as styles]
-            [status-im.native-module.core :as status]
-            [status-im.mailserver.core :as mailserver.core]
-            [status-im.constants :as constants]
+            [status-im.ui.screens.pairing.styles :as pairing.styles]
             [status-im.ui.screens.profile.user.views :as profile]
             [status-im.ui.screens.profile.seed.views :as profile.recovery]
             [status-im.ui.components.common.common :as components.common]))
@@ -83,7 +81,11 @@
   [react/view
    [pairing.views/pair-this-device]
    [pairing.views/sync-devices]
-   [pairing.views/installations-list installations]])
+   [react/view {:style pairing.styles/installation-list}
+    (for [installation installations]
+      ^{:key (:installation-id installation)}
+      [react/view {:style {:margin-bottom 10}}
+       (pairing.views/render-row installation)])]])
 
 (defn connection-status
   "generates a composite message of the current connection state given peer and mailserver statuses"
@@ -143,8 +145,7 @@
                                           (re-frame/dispatch [:log-level.ui/logging-enabled (not logging-enabled)]))}])]))
 
 (views/defview advanced-settings []
-  (views/letsubs [installations    [:pairing/installations]
-                  current-mailserver-id [:mailserver/current-id]
+  (views/letsubs [current-mailserver-id [:mailserver/current-id]
                   mailservers           [:mailserver/fleet-mailservers]
                   mailserver-state      [:mailserver/state]
                   node-status           [:node-status]
@@ -173,15 +174,15 @@
           ^{:key (:id mailserver)}
           [react/view {:style {:margin-vertical 8}}
            [render-fn mailserver]])]
-;
-       [react/view {:style styles/title-separator}]
-       [react/text {:style styles/adv-settings-subtitle} (i18n/label :devices)]
-       (when (config/pairing-enabled? true)
-         (installations-section installations))
-;
        [react/view {:style styles/title-separator}]
        [react/text {:style styles/adv-settings-subtitle} "Logging"]
        [logging-display]])))
+
+(views/defview installations []
+  (views/letsubs [installations    [:pairing/installations]]
+    [react/scroll-view
+     (when (config/pairing-enabled? true)
+       (installations-section installations))]))
 
 (views/defview backup-recovery-phrase []
   [profile.recovery/backup-seed])
@@ -200,6 +201,7 @@
   (views/letsubs [current-view-id [:get :view-id]
                   editing?        [:get :my-profile/editing?]] ;; TODO janherich: refactor my-profile, unnecessary complicated structure in db (could be just `:staged-name`/`:editing?` fields in account map) and horrible way to access it woth `:get`/`:set` subs/events
     (let [adv-settings-open?           (= current-view-id :advanced-settings)
+          installations-open?          (= current-view-id :installations)
           backup-recovery-phrase-open? (= current-view-id :backup-recovery-phrase)
           notifications?               (get-in user [:desktop-notifications?])
           show-backup-seed?            (and (not seed-backed-up?) (not (string/blank? mnemonic)))]
@@ -226,6 +228,12 @@
           [react/text {:style (styles/profile-row-text colors/black)
                        :font  (if adv-settings-open? :medium :default)}
            (i18n/label :t/advanced-settings)]
+          [vector-icons/icon :icons/forward {:style {:tint-color colors/gray}}]]]
+        [react/touchable-highlight {:style  (styles/profile-row installations-open?)
+                                    :on-press #(re-frame/dispatch [:navigate-to (if installations-open? :home :installations)])}
+         [react/view {:style styles/adv-settings}
+          [react/text {:style (styles/profile-row-text colors/black)}
+           (i18n/label :t/devices)]
           [vector-icons/icon :icons/forward {:style {:tint-color colors/gray}}]]]
         (when show-backup-seed?
           [react/touchable-highlight {:style  (styles/profile-row backup-recovery-phrase-open?)
