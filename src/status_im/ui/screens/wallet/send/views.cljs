@@ -1065,12 +1065,153 @@ Example:
 ;; look at duplicate logic and create a model so that we can simply execute methods against that model
 ;; instead of peicing together various information for each individual computation
 
+(def signing-popup
+  {:background-color        colors/white
+   :border-top-left-radius  8
+   :border-top-right-radius 8
+   :position                :absolute
+   :left                    0
+   :right                   0
+   :bottom                  0})
+
+(defn confirm-modal [signing? total-eth native-currency fiat-currency total-fiat]
+  [react/view {:style signing-popup}
+   [react/text {:style {:color       colors/black
+                        :font-size   15
+                        :line-height 22
+                        :margin-top  23
+                        :text-align  :center}}
+    "Total"]
+   [react/text {:style {:color       colors/black
+                        :margin-top  4
+                        :font-weight :bold
+                        :font-size   22
+                        :line-height 28
+                        :text-align  :center}}
+    (str total-eth " " (name (:symbol native-currency)))]
+   [react/text {:style {:color       colors/gray
+                        :text-align  :center
+                        :margin-top  3
+                        :line-height 21
+                        :font-size   15}}
+    (str "~ " (:symbol fiat-currency "$") total-fiat)]
+   [react/view {:style {:flex-direction  :row
+                        :justify-content :center
+                        :padding-top     16
+                        :padding-bottom  24}}
+    [react/touchable-highlight
+     {:on-press #(reset! signing? true)
+      :style    {:padding-horizontal 39
+                 :padding-vertical   12
+                 :border-radius      8
+                 :background-color   colors/blue-light}}
+     [react/text {:style {:font-size   15
+                          :line-height 22
+                          :color       colors/blue}}
+      "Confirm"]]]])
+
+(defn- phrase-word [word]
+  [react/text {:style {:color       colors/blue
+                       :font-size   15
+                       :line-height 22
+                       :font-weight "500"
+                       :width       "33%"
+                       :text-align  :center}}
+   word])
+
+(defn- phrase-separator []
+  [react/view {:style {:height "100%"
+                       :width 1
+                       :background-color colors/gray-light}}])
+
+(defn sign-modal [signing-phrase total-eth native-currency fiat-currency total-fiat]
+  (let [phrase (string/split signing-phrase #" ")]
+    [react/view {:style {:position :absolute
+                         :left     0
+                         :right    0
+                         :bottom   0}}
+     [tooltip/tooltip "Only send the transaction if you recognize\nyour three words"
+      {:bottom-value 12
+       :color        colors/red-light}]
+     [react/view {:style {:background-color        colors/white
+                          :border-top-left-radius  8
+                          :border-top-right-radius 8}}
+      [react/view {:flex              1
+                   :height            46
+                   :margin-top        18
+                   :flex-direction    :row
+                   :align-items       :center
+                   :margin-horizontal "15%"
+                   :border-width      1
+                   :border-color      colors/gray-light
+                   :border-radius     218}
+       [phrase-word (first phrase)]
+       [phrase-separator]
+       [phrase-word (second phrase)]
+       [phrase-separator]
+       [phrase-word (last phrase)]]
+      [react/text {:style {:color       colors/black
+                           :margin-top  13
+                           :font-weight :bold
+                           :font-size   22
+                           :line-height 28
+                           :text-align  :center}}
+       (str "Send" " " total-eth " " (name (:symbol native-currency)))]
+      [react/text {:style {:color       colors/gray
+                           :text-align  :center
+                           :margin-top  3
+                           :line-height 21
+                           :font-size   15}}
+       (str "~ " (:symbol fiat-currency "$") total-fiat)]
+      [react/text-input
+       {:auto-focus             true
+        :secure-text-entry      true
+        :placeholder            "Enter your login password..."
+        :placeholder-text-color colors/gray
+        :on-change-text         #(log/info "PAPAYA " %)
+        :style                  {:flex              1
+                                 :margin-top        15
+                                 :margin-horizontal 15
+                                 :padding           14
+                                 :padding-bottom    18
+                                 :background-color  colors/gray-lighter
+                                 :border-radius     8
+                                 :font-size         15
+                                 :letter-spacing    -0.2
+                                 :height            52}
+        :accessibility-label    :enter-password-input
+        :auto-capitalize        :none}]
+      [react/view {:style {:flex-direction  :row
+                           :justify-content :center
+                           :padding-top     16
+                           :padding-bottom  24}}
+       [react/touchable-highlight
+        {:on-press #(js/alert "hej haj jaganjac")
+         :style    {:padding-horizontal 39
+                    :padding-vertical   12
+                    :border-radius      8
+                    :background-color   colors/blue-light}}
+        [react/text {:style {:font-size   15
+                             :line-height 22
+                             :color       colors/blue}}
+         "Send"]]]]]))
+
+(defview confirm-and-sign [total-eth native-currency fiat-currency total-fiat]
+  (letsubs [signing? (reagent/atom false)
+            account  [:account/account]]
+    (if @signing?
+      [confirm-modal signing? total-eth native-currency fiat-currency total-fiat]
+      [sign-modal (:signing-phrase account) total-eth native-currency fiat-currency total-fiat])))
+
 (defn transaction-overview [{:keys [modal? transaction contact token native-currency
                                     fiat-currency prices] :as data}]
   (let [tx-atom (atom transaction)
         network-fees-modal-ref (atom nil)
         open-network-fees! #(anim-ref-send @network-fees-modal-ref :open!)
-        close-network-fees! #(anim-ref-send @network-fees-modal-ref :close!)]
+        close-network-fees! #(anim-ref-send @network-fees-modal-ref :close!)
+        sign-transaction-modal-ref (atom nil)
+        open-sign-transaction! #(anim-ref-send @sign-transaction-modal-ref :open!)
+        close-sign-transaction #(anim-ref-send @sign-transaction-modal-ref :close!)]
     (when-not (optimal-gas-present? transaction)
       (fetch-optimal-gas
        (some :symbol [transaction native-currency])
@@ -1194,46 +1335,7 @@ Example:
                                   :font-size 15
                                   :text-align :right}}
               (str "~ "  network-fee-fiat " " (:code fiat-currency))]]]]
-          [react/view {:style {:background-color colors/white
-                               :border-top-left-radius 8
-                               :border-top-right-radius 8
-                               :position :absolute
-                               :left 0
-                               :right 0
-                               :bottom 0}}
-           [react/text {:style {:color colors/black
-                                :font-size 15
-                                :line-height 22
-                                :margin-top 23
-                                :text-align :center}}
-            "Total"]
-           [react/text {:style {:color colors/black
-                                :margin-top 4
-                                :font-weight :bold
-                                :font-size 22
-                                :line-height 28
-                                :text-align :center}}
-            (str total-eth " " (name (:symbol native-currency)))]
-           [react/text {:style {:color colors/gray
-                                :text-align :center
-                                :margin-top 3
-                                :line-height 21
-                                :font-size 15}}
-            (str "~ " (:symbol fiat-currency "$") total-fiat)]
-           [react/view {:style {:flex-direction :row
-                                :justify-content :center
-                                :padding-top 16
-                                :padding-bottom 24}}
-            [react/touchable-highlight
-             {:on-press (fn [] #_TODO)
-              :style {:padding-horizontal 39
-                      :padding-vertical 12
-                      :border-radius 8
-                      :background-color colors/blue-light}}
-             [react/text {:style {:font-size 15
-                                  :line-height 22
-                                  :color colors/blue}}
-              "Confirm"]]]]
+          [confirm-and-sign total-eth native-currency fiat-currency total-fiat]
 
           #_[react/text "Here we are"]]]))))
 
@@ -1247,10 +1349,10 @@ Example:
             fiat-currency [:wallet/currency]
             chain                        (ethereum/network->chain-keyword network)
             native-currency              (tokens/native-currency chain)]
-   ;; TODO look up contact don't pass it forward        
+   ;; TODO look up contact don't pass it forward
     (let [token (tokens/asset-for
                  all-tokens
-                 (ethereum/network->chain-keyword network) (:symbol symbol))]
+                 (ethereum/network->chain-keyword network) (:symbol transaction))]
       [transaction-overview {:transaction transaction
                              :modal? modal?
                              :contact contact
