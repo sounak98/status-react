@@ -100,7 +100,7 @@
           :web3/fetch-node-version  [web3
                                      #(re-frame/dispatch
                                        [:web3/fetch-node-version-callback %])]}
-         (protocol/initialize-protocol address)
+         (protocol/initialize-protocol)
          #(when platform/desktop?
             (let [logging-enabled (get-in db [:account/account :settings :logging-enabled])]
               (log/debug "### user-login-callback .setLoggingEnabled" logging-enabled)
