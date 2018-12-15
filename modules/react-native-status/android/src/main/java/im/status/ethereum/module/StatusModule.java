@@ -2,11 +2,13 @@ package im.status.ethereum.module;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.*;
-import android.view.WindowManager;
+import android.support.v4.content.FileProvider ;
 import android.text.TextUtils;
+import android.view.WindowManager;
 import android.util.Log;
 import android.webkit.CookieManager;
 import android.webkit.CookieSyncManager;
@@ -16,17 +18,23 @@ import com.facebook.react.bridge.*;
 import com.facebook.react.modules.core.DeviceEventManagerModule;
 import com.github.status_im.status_go.Statusgo;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.FileInputStream;
 import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.io.FileOutputStream;
+import java.text.SimpleDateFormat;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 import org.json.JSONObject;
 import org.json.JSONException;
@@ -114,10 +122,9 @@ class StatusModule extends ReactContextBaseJavaModule implements LifecycleEventL
         this.getReactApplicationContext().getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit("gethEvent", params);
     }
 
-    private static String prepareLogsFile() {
-        String gethLogFileName = "geth.log";
-        File pubDirectory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-        File logFile = new File(pubDirectory, gethLogFileName);
+    private String prepareLogsFile(final Context context) {
+        final String gethLogFileName = "geth.log";
+        final File logFile = context.getFileStreamPath(gethLogFileName);
 
         try {
             logFile.setReadable(true);
@@ -149,7 +156,8 @@ class StatusModule extends ReactContextBaseJavaModule implements LifecycleEventL
         // retrieve parameters from app config, that will be applied onto the Go-side config later on
         final String absDataDirPath = pathCombine(absRootDirPath, jsonConfig.getString("DataDir"));
         final Boolean logEnabled = jsonConfig.getBoolean("LogEnabled");
-        final String gethLogFilePath = logEnabled ? prepareLogsFile() : null;
+        final Context context = this.getReactApplicationContext();
+        final String gethLogFilePath = logEnabled ? prepareLogsFile(context) : null;
 
         jsonConfig.put("DataDir", absDataDirPath);
         jsonConfig.put("KeyStoreDir", absKeystoreDirPath);
@@ -454,6 +462,95 @@ class StatusModule extends ReactContextBaseJavaModule implements LifecycleEventL
             };
 
         StatusThreadPoolExecutor.getInstance().execute(r);
+    }
+
+    private Boolean zip(File[] _files, File zipFile) {
+        final int BUFFER = 0x8000;
+
+		try {
+			BufferedInputStream origin = null;
+			FileOutputStream dest = new FileOutputStream(zipFile);
+			ZipOutputStream out = new ZipOutputStream(new BufferedOutputStream(dest));
+			byte data[] = new byte[BUFFER];
+
+			for (int i = 0; i < _files.length; i++) {
+                final File file = _files[i];
+                if (file == null || !file.exists()) {
+                    continue;
+                }
+
+                Log.v("Compress", "Adding: " + file.getAbsolutePath());
+                FileInputStream fi = new FileInputStream(file);
+                origin = new BufferedInputStream(fi, BUFFER);
+
+                ZipEntry entry = new ZipEntry(file.getName());
+                out.putNextEntry(entry);
+                int count;
+
+                while ((count = origin.read(data, 0, BUFFER)) != -1) {
+                    out.write(data, 0, count);
+                }
+                origin.close();
+			}
+
+            out.close();
+            
+            return true;
+		} catch (Exception e) {
+            e.printStackTrace();
+            return false;
+		}
+    }
+    
+    @ReactMethod
+    public void sendLogs(final String dbJson) {
+        Log.d(TAG, "sendLogs");
+        if (!checkAvailability()) {
+            return;
+        }
+
+        final Context context = this.getReactApplicationContext();
+        final File dbFile = context.getFileStreamPath("db.json");
+        try {
+            OutputStreamWriter outputStreamWriter = new OutputStreamWriter(context.openFileOutput("db.json", Context.MODE_PRIVATE));
+            outputStreamWriter.write(dbJson);
+            outputStreamWriter.close();
+        }
+        catch (IOException e) {
+            Log.e(TAG, "File write failed: " + e.toString());
+        }
+
+        try {
+            final File zipFile = context.getFileStreamPath("debug.zip");
+            final File gethLogFile = context.getFileStreamPath("geth.log");
+        
+            final Boolean zipped = zip(new File[] {dbFile, gethLogFile}, zipFile);
+            if (zipped && zipFile.exists()) {
+                Log.d(TAG, "Sending " + zipFile.getAbsolutePath() + " file through share intent");
+
+                final String providerName = context.getPackageName() + ".provider";
+                final Activity activity = getCurrentActivity();
+                final Uri dbJsonURI = FileProvider.getUriForFile(activity, providerName, zipFile);
+
+                Intent intentShareFile = new Intent(Intent.ACTION_SEND);
+
+                intentShareFile.setType("application/json");
+                intentShareFile.putExtra(Intent.EXTRA_STREAM, dbJsonURI);
+
+                SimpleDateFormat dateFormatGmt = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                dateFormatGmt.setTimeZone(java.util.TimeZone.getTimeZone("GMT"));
+                intentShareFile.putExtra(Intent.EXTRA_SUBJECT, "Status.im logs");
+                intentShareFile.putExtra(Intent.EXTRA_TEXT, "Logs from " + dateFormatGmt.format(new java.util.Date()));
+
+                activity.startActivity(Intent.createChooser(intentShareFile, "Share Debug Logs"));
+            } else {
+                Log.d(TAG, "File " + zipFile.getAbsolutePath() + " does not exist");
+            }
+        } catch (Exception e) {
+            Log.e(TAG, e.getMessage());
+            e.printStackTrace();
+            return;
+        }
     }
 
     @ReactMethod

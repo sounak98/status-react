@@ -138,6 +138,11 @@
 ;; accounts module
 
 (handlers/register-handler-fx
+ :accounts.ui/send-logs-pressed
+ (fn [cofx _]
+   (accounts/send-logs cofx)))
+
+(handlers/register-handler-fx
  :accounts.ui/mainnet-warning-shown
  (fn [cofx _]
    (accounts.update/account-update cofx {:mainnet-warning-shown? true} {})))

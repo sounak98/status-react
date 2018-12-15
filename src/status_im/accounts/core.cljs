@@ -2,12 +2,14 @@
   (:require [re-frame.core :as re-frame]
             [status-im.accounts.update.core :as accounts.update]
             [status-im.i18n :as i18n]
+            [status-im.native-module.core :as status]
             [status-im.ui.screens.navigation :as navigation]
             [status-im.ui.screens.wallet.settings.models :as wallet.settings.models]
             [status-im.utils.config :as config]
             [status-im.utils.utils :as utils]
             [status-im.utils.fx :as fx]
-            [status-im.utils.platform :as platform]))
+            [status-im.utils.platform :as platform]
+            [status-im.utils.types :as types]))
 
 (fx/defn show-mainnet-is-default-alert [{:keys [db]}]
   (let [enter-name-screen? (= :enter-name (get-in db [:accounts/create :step]))
@@ -83,3 +85,18 @@
     (accounts.update/update-settings cofx
                                      (assoc settings :web3-opt-in? opt-in)
                                      {})))
+
+(fx/defn send-logs
+  [{:keys [db] :as cofx}]
+  (let [db-json (types/clj->json (select-keys db [:discover-current-dapp
+                                                  :discover-search-tags
+                                                  :discoveries
+                                                  :initial-props
+                                                  :keyboard-height
+                                                  :keyboard-max-height
+                                                  :navigation-stack
+                                                  :network
+                                                  :network-status
+                                                  :peers-count
+                                                  :peers-summary]))]
+    (status/send-logs db-json)))

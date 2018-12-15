@@ -170,6 +170,13 @@
     {:label-kw            :t/log-level
      :action-fn           #(re-frame/dispatch [:navigate-to :log-level-settings])
      :accessibility-label :log-level-settings-button}]
+   (when dev-mode?
+     [react/view styles/my-profile-settings-send-logs-wrapper
+      [react/view styles/my-profile-settings-send-logs
+       [profile.components/settings-item {:label-kw            :t/send-logs
+                                          :destructive?        true
+                                          :hide-arrow?         true
+                                          :action-fn           #(re-frame/dispatch [:accounts.ui/send-logs-pressed])}]]])
    [profile.components/settings-item-separator]
    [profile.components/settings-item
     {:label-kw            :t/fleet
