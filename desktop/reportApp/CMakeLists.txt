@@ -14,7 +14,6 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11")
 set(APP_NAME "reportApp")
 
 set(MAIN_CPP_SOURCE reportpublisher.cpp
-                    reportpublisher.cpp
                     main.cpp)
 
 add_executable(

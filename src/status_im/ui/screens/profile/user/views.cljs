@@ -3,6 +3,7 @@
   (:require [re-frame.core :as re-frame]
             [reagent.core :as reagent]
             [status-im.i18n :as i18n]
+            [status-im.utils.debug-mode.core :as debug-mode]
             [status-im.ui.components.action-button.styles :as action-button.styles]
             [status-im.ui.components.button.view :as button]
             [status-im.ui.components.colors :as colors]
@@ -18,6 +19,7 @@
             [status-im.ui.screens.profile.user.styles :as styles]
             [status-im.utils.build :as build]
             [status-im.utils.config :as config]
+            [status-im.utils.datetime :as datetime]
             [status-im.utils.platform :as platform]
             [status-im.utils.utils :as utils]
             [status-im.ui.components.icons.vector-icons :as icons]
@@ -146,7 +148,7 @@
                                           :active?             logged-in?
                                           :action-fn           #(re-frame/dispatch [:accounts.logout.ui/logout-pressed])}]]]]))
 
-(defview advanced-settings [{:keys [network networks dev-mode? settings]} on-show]
+(defview advanced-settings [{:keys [network networks dev-mode? settings]} debug-mode on-show]
   {:component-did-mount on-show}
   [react/view
    (when (and config/extensions-enabled? dev-mode?)
@@ -173,6 +175,11 @@
    (when dev-mode?
      [react/view styles/my-profile-settings-send-logs-wrapper
       [react/view styles/my-profile-settings-send-logs
+       (let [enabled? (debug-mode/debug-mode-enabled? {:now (datetime/timestamp)} debug-mode)]
+         [profile.components/settings-switch-item {:label-kw     :t/debug-mode-toggle-mobile
+                                                 ;; TODO: Check the best way to call debug-mode/debug-mode-enabled? with cofx or some way to get `now`
+                                                   :value        enabled?
+                                                   :action-fn    #(re-frame/dispatch [:accounts.ui/enable-debug-mode-pressed (not enabled?)])}])
        [profile.components/settings-item {:label-kw            :t/send-logs
                                           :destructive?        true
                                           :hide-arrow?         true
@@ -202,7 +209,7 @@
      :value     dev-mode?
      :action-fn #(re-frame/dispatch [:accounts.ui/dev-mode-switched %])}]])
 
-(defview advanced [params on-show]
+(defview advanced [params debug-mode on-show]
   (letsubs [advanced? [:get :my-profile/advanced?]]
     {:component-will-unmount #(re-frame/dispatch [:set :my-profile/advanced? false])}
     [react/view
@@ -215,13 +222,14 @@
           (i18n/label :t/wallet-advanced)]
          [icons/icon (if advanced? :icons/up :icons/down) {:color colors/blue}]]]]]
      (when advanced?
-       [advanced-settings params on-show])]))
+       [advanced-settings params debug-mode on-show])]))
 
 (defview my-profile []
   (letsubs [{:keys [public-key photo-path] :as current-account} [:account/account]
             editing?        [:get :my-profile/editing?]
             changed-account [:get :my-profile/profile]
             currency        [:wallet/currency]
+            debug-mode      [:get :debug-mode]
             login-data      [:get :accounts/login]
             scroll          (reagent/atom nil)]
     (let [shown-account    (merge current-account changed-account)
@@ -257,9 +265,9 @@
                                                                              {:contact current-account
                                                                               :source  :public-key
                                                                               :value   public-key}])
-                                   :style styles/share-contact-code-button
+                                   :style               styles/share-contact-code-button
                                    :accessibility-label :share-my-profile-button}
           (i18n/label :t/share-my-profile)]]
         [react/view styles/my-profile-info-container
          [my-profile-settings current-account shown-account currency (nil? login-data)]]
-        [advanced shown-account on-show-advanced]]])))
+        [advanced shown-account debug-mode on-show-advanced]]])))

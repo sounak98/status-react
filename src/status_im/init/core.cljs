@@ -79,7 +79,7 @@
   "Initialize db to initial state"
   [{{:keys [status-module-initialized? view-id hardwallet
             initial-props
-            network-status network peers-count peers-summary device-UUID]
+            network-status network peers-count peers-summary debug-mode device-UUID]
      :node/keys [status]
      :or   {network (get app-db :network)}} :db}]
   {:db (assoc app-db
@@ -92,6 +92,7 @@
               :node/status status
               :network network
               :device-UUID device-UUID
+              :debug-mode debug-mode
               :view-id view-id
               :hardwallet (select-keys hardwallet [:nfc-enabled? :nfc-supported?]))})
 
@@ -149,7 +150,7 @@
   (let [{:universal-links/keys [url]
          :keys [accounts/accounts accounts/create networks/networks network
                 network-status peers-count peers-summary view-id navigation-stack
-                status-module-initialized? device-UUID semaphores accounts/login]
+                status-module-initialized? device-UUID debug-mode semaphores accounts/login]
          :node/keys [status]
          :or   {network (get app-db :network)}} db
         current-account (get accounts address)
@@ -172,6 +173,7 @@
                         :peers-summary peers-summary
                         :peers-count peers-count
                         :device-UUID device-UUID
+                        :debug-mode debug-mode
                         :semaphores semaphores
                         :web3 web3)
            (= view-id :create-account)

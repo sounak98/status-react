@@ -24,6 +24,7 @@
             [status-im.hardwallet.core :as hardwallet]
             [status-im.i18n :as i18n]
             [status-im.init.core :as init]
+            [status-im.utils.debug-mode.core :as debug-mode]
             [status-im.log-level.core :as log-level]
             [status-im.mailserver.core :as mailserver]
             [status-im.network.core :as network]
@@ -138,11 +139,6 @@
 ;; accounts module
 
 (handlers/register-handler-fx
- :accounts.ui/send-logs-pressed
- (fn [cofx _]
-   (accounts/send-logs cofx)))
-
-(handlers/register-handler-fx
  :accounts.ui/mainnet-warning-shown
  (fn [cofx _]
    (accounts.update/account-update cofx {:mainnet-warning-shown? true} {})))
@@ -171,6 +167,17 @@
  :accounts.ui/wallet-set-up-confirmed
  (fn [cofx [_ modal?]]
    (accounts/confirm-wallet-set-up cofx modal?)))
+
+(handlers/register-handler-fx
+ :accounts.ui/send-logs-pressed
+ (fn [cofx _]
+   (debug-mode/send-logs cofx)))
+
+(handlers/register-handler-fx
+ :accounts.ui/enable-debug-mode-pressed
+ (fn [cofx [_ enable?]]
+   (log/debug :accounts.ui/enable-debug-mode-pressed enable?)
+   (debug-mode/prompt-enable-debug-mode cofx (when enable? {:name "DEBUG" :value "DEBUG"}))))
 
 ;; accounts create module
 
@@ -572,6 +579,13 @@
  :log-level.ui/logging-enabled-confirmed
  (fn [cofx [_ enabled]]
    (log-level/save-logging-enabled cofx enabled)))
+
+;; debug-mode module
+
+(handlers/register-handler-fx
+ :debug-mode/enable-debug-mode
+ (fn [cofx [_ log-level]]
+   (debug-mode/enable-debug-mode cofx log-level)))
 
 ;; Browser bridge module
 

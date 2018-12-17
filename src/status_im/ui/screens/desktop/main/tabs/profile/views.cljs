@@ -7,6 +7,8 @@
             [status-im.utils.utils :as utils]
             [status-im.ui.components.colors :as colors]
             [status-im.i18n :as i18n]
+            [status-im.utils.debug-mode.core :as debug-mode]
+            [status-im.utils.datetime :as datetime]
             [status-im.ui.components.icons.vector-icons :as vector-icons]
             [taoensso.timbre :as log]
             [status-im.utils.gfycat.core :as gfy]
@@ -130,6 +132,20 @@
     [react/text {:style styles/connection-stats-entry}
      (str "outbound " les-packets-out)]]])
 
+(defn debug-mode-section [debug-mode]
+  [react/view
+   [react/text {:style styles/adv-settings-subtitle} (i18n/label :debug-mode)]
+   [react/view {:style (styles/adv-settings-row false)}
+    [react/text {:style (styles/debug-mode-row-text colors/black)} (i18n/label :debug-mode-toggle-desktop)]
+    (let [enabled? (debug-mode/debug-mode-enabled? {:now (datetime/timestamp)} debug-mode)]
+      [react/switch {:on-tint-color   colors/blue
+                     :value           enabled?
+                     :on-value-change #(re-frame/dispatch [:accounts.ui/enable-debug-mode-pressed (not enabled?)])}])]
+   [react/view {:style (styles/adv-settings-row false)}
+    [react/touchable-highlight {:on-press #(re-frame/dispatch [:accounts.ui/send-logs-pressed])}
+     [react/text {:style (styles/debug-mode-row-text colors/red)}
+      (i18n/label :t/send-logs)]]]])
+
 (views/defview logging-display []
   (views/letsubs [logging-enabled [:settings/logging-enabled]]
     [react/view {:style (styles/profile-row false)}
@@ -143,10 +159,11 @@
                                           (re-frame/dispatch [:log-level.ui/logging-enabled (not logging-enabled)]))}])]))
 
 (views/defview advanced-settings []
-  (views/letsubs [installations    [:pairing/installations]
+  (views/letsubs [installations         [:pairing/installations]
                   current-mailserver-id [:mailserver/current-id]
                   mailservers           [:mailserver/fleet-mailservers]
                   mailserver-state      [:mailserver/state]
+                  debug-mode            [:debug-mode]
                   node-status           [:node-status]
                   peers-count           [:peers-count]
                   connection-stats      [:connection-stats]
@@ -179,6 +196,8 @@
        (when (config/pairing-enabled? true)
          (installations-section installations))
 ;
+       [react/view {:style styles/title-separator}]
+       (debug-mode-section debug-mode)
        [react/view {:style styles/title-separator}]
        [react/text {:style styles/adv-settings-subtitle} "Logging"]
        [logging-display]])))

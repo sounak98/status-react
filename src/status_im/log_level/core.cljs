@@ -2,17 +2,22 @@
   (:require [re-frame.core :as re-frame]
             [status-im.accounts.update.core :as accounts.update]
             [status-im.react-native.js-dependencies :as rn-dependencies]
+            [status-im.node.core :as node]
             [status-im.i18n :as i18n]
-            [status-im.utils.fx :as fx]))
+            [status-im.utils.fx :as fx]
+            [taoensso.timbre :as log]))
 
 (fx/defn save-log-level
   [{:keys [db now] :as cofx} log-level]
-  (let [settings (get-in db [:account/account :settings])]
+  (let [settings      (get-in db [:account/account :settings])
+        new-settings  (if log-level
+                        (assoc settings :log-level log-level)
+                        (dissoc settings :log-level))]
+    (log/debug :save-log-level (:log-level settings) (node/get-log-level settings) (:log-level new-settings) (node/get-log-level new-settings))
     (accounts.update/update-settings cofx
-                                     (if log-level
-                                       (assoc settings :log-level log-level)
-                                       (dissoc settings :log-level))
-                                     {:success-event [:accounts.update.callback/save-settings-success]})))
+                                     new-settings
+                                     (when (not= (node/get-log-level settings) (node/get-log-level new-settings))
+                                       {:success-event [:accounts.update.callback/save-settings-success]}))))
 
 (fx/defn show-change-log-level-confirmation
   [{:keys [db]} {:keys [name value] :as log-level}]

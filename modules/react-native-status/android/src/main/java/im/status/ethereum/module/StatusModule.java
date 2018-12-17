@@ -521,7 +521,7 @@ class StatusModule extends ReactContextBaseJavaModule implements LifecycleEventL
         }
 
         try {
-            final File zipFile = context.getFileStreamPath("debug.zip");
+            final File zipFile = context.getFileStreamPath("Status-debug-logs.zip");
             final File gethLogFile = context.getFileStreamPath("geth.log");
         
             final Boolean zipped = zip(new File[] {dbFile, gethLogFile}, zipFile);
@@ -540,7 +540,7 @@ class StatusModule extends ReactContextBaseJavaModule implements LifecycleEventL
                 SimpleDateFormat dateFormatGmt = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
                 dateFormatGmt.setTimeZone(java.util.TimeZone.getTimeZone("GMT"));
                 intentShareFile.putExtra(Intent.EXTRA_SUBJECT, "Status.im logs");
-                intentShareFile.putExtra(Intent.EXTRA_TEXT, "Logs from " + dateFormatGmt.format(new java.util.Date()));
+                intentShareFile.putExtra(Intent.EXTRA_TEXT, "Logs from " + dateFormatGmt.format(new java.util.Date()) + " GMT\n\nThese logs have been generated automatically by the user's request for debugging purposes.");
 
                 activity.startActivity(Intent.createChooser(intentShareFile, "Share Debug Logs"));
             } else {

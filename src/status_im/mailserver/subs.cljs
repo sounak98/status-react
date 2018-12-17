@@ -2,6 +2,11 @@
   (:require [re-frame.core :as re-frame]))
 
 (re-frame/reg-sub
+ :debug-mode
+ (fn [db]
+   (get db :debug-mode)))
+
+(re-frame/reg-sub
  :mailserver/state
  (fn [db]
    (get db :mailserver/state)))
