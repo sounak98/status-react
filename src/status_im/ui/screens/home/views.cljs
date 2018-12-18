@@ -106,11 +106,6 @@
      [toolbar show-welcome? (and network-initialized? (not rpc-network?)) sync-state latest-block-number]
      (cond show-welcome?
            [welcome view-id]
-           loading?
-           [react/view {:style {:flex            1
-                                :justify-content :center
-                                :align-items     :center}}
-            [components/activity-indicator {:animating true}]]
            :else
            [chats-list])
      (when platform/android?
