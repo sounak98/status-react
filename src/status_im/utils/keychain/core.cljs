@@ -49,7 +49,7 @@
 
 ;; Stores the password for the address to the Keychain
 (defn save-user-password [address password callback]
-  (-> (.setInternetCredentials rn/keychain address address password (clj->js keychain-restricted-availability))
+  (-> (.setInternetCredentials rn/keychain address address password "SECURE_HARDWARE" (clj->js keychain-restricted-availability))
       (.then callback)))
 
 (defn handle-callback [callback result]
@@ -79,11 +79,14 @@
            (enum-val "ACCESS_CONTROL" "BIOMETRY_ANY_OR_DEVICE_PASSCODE")}))
         (.then callback))
 
-    (platform/android-version>= android-keystore-min-version)
-    (status/rooted-device? (comp callback not))
-
+    platform/android?
+    (-> (.getSecurityLevel rn/keychain)
+        (.then (fn [level]
+                 (if (not= level "SECURE_HARDWARE")
+                   (callback false)
+                   (status/rooted-device? (comp callback not))))))
     :else
-    false))
+    (callback false)))
 
 ;; ********************************************************************************
 ;; Storing / Retrieving the realm encryption key to/from the Keychain
