@@ -1,15 +1,19 @@
 (ns status-im.native-module.core
-  (:require [status-im.native-module.impl.module :as native-module]))
+  (:require [status-im.native-module.impl.module :as native-module]
+            [taoensso.timbre :as log]))
 
 (def adjust-resize 16)
 
 (defn start-node [config]
+  (log/debug "PERF START-NODE" (.now js/Date))
   (native-module/start-node config))
 
 (defn node-ready []
+  (log/debug "PERF NODE-READY" (.now js/Date))
   (native-module/node-ready))
 
 (defn stop-node []
+  (log/debug "PERF STOP-NODE" (.now js/Date))
   (native-module/stop-node))
 
 (defn create-account [password callback]
