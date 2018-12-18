@@ -47,9 +47,14 @@
   ;; Note that the password won't be stored if the device isn't locked by a passcode.
   {:accessible (enum-val "ACCESSIBLE" "WHEN_PASSCODE_SET_THIS_DEVICE_ONLY")})
 
+(def keychain-secure-hardware
+  ;; (Android) Requires to store the encryption key for the entry in secure hardware
+  ;; or StrongBox (see https://developer.android.com/training/articles/keystore#ExtractionPrevention)
+  "SECURE_HARDWARE")
+
 ;; Stores the password for the address to the Keychain
 (defn save-user-password [address password callback]
-  (-> (.setInternetCredentials rn/keychain address address password "SECURE_HARDWARE" (clj->js keychain-restricted-availability))
+  (-> (.setInternetCredentials rn/keychain address address password keychain-secure-hardware (clj->js keychain-restricted-availability))
       (.then callback)))
 
 (defn handle-callback [callback result]
@@ -82,7 +87,9 @@
     platform/android?
     (-> (.getSecurityLevel rn/keychain)
         (.then (fn [level]
-                 (if (not= level "SECURE_HARDWARE")
+                 ;; we only enable password saving 
+                 ;; if secure hardware is available on Android
+                 (if (not= level keychain-secure-hardware)
                    (callback false)
                    (status/rooted-device? (comp callback not))))))
     :else
