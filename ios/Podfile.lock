@@ -70,7 +70,7 @@ PODS:
     - React
   - React/Core (0.56.0):
     - yoga (= 0.56.0.React)
-  - RNKeychain (3.0.0):
+  - RNKeychain (3.0.0-rc.3):
     - React
   - yoga (0.56.0.React)
 
